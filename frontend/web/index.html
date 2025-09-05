@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YAML - 操作记录总结</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #dc3545;
+        }
+
+        .status-dot.active {
+            background: #28a745;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #1e7e34;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .summary-content {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+            margin-bottom: 15px;
+            min-height: 100px;
+            white-space: pre-wrap;
+            line-height: 1.6;
+        }
+
+        .activity-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            gap: 12px;
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: white;
+        }
+
+        .activity-icon.keyboard {
+            background: #17a2b8;
+        }
+
+        .activity-icon.app {
+            background: #28a745;
+        }
+
+        .activity-info {
+            flex: 1;
+        }
+
+        .activity-info .title {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 2px;
+        }
+
+        .activity-info .details {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .activity-time {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .auto-refresh {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: auto;
+        }
+
+        .auto-refresh input[type="checkbox"] {
+            transform: scale(1.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 YAML 操作记录总结</h1>
+            <p>实时监控您的电脑使用情况，AI智能分析生成总结报告</p>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-item">
+                <div class="status-dot" id="serverStatus"></div>
+                <span>服务器状态</span>
+            </div>
+            <div class="status-item">
+                <div class="status-dot" id="monitorStatus"></div>
+                <span>监控状态</span>
+            </div>
+            <div class="auto-refresh">
+                <input type="checkbox" id="autoRefresh" checked>
+                <label for="autoRefresh">自动刷新</label>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-success" onclick="startMonitoring()">🚀 启动监控</button>
+            <button class="btn btn-danger" onclick="stopMonitoring()">⏹️ 停止监控</button>
+            <button class="btn btn-primary" onclick="generateActivitySummary()">📊 生成活动总结</button>
+            <button class="btn btn-warning" onclick="generateKeyboardSummary()">⌨️ 生成输入总结</button>
+            <button class="btn btn-primary" onclick="refreshData()">🔄 刷新数据</button>
+        </div>
+
+        <div class="content-grid">
+            <div class="card">
+                <h3>🤖 AI 智能总结</h3>
+                <div id="summaryError" class="error" style="display: none;"></div>
+                <div id="summaryContent" class="summary-content">点击上方按钮生成AI总结...</div>
+                <div id="summaryLoading" class="loading" style="display: none;">AI正在分析中，请稍候...</div>
+            </div>
+
+            <div class="card">
+                <h3>📋 最近活动记录</h3>
+                <div id="activityError" class="error" style="display: none;"></div>
+                <div id="activityList" class="activity-list">
+                    <div class="loading">加载中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080/api/v1';
+        let autoRefreshInterval;
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            checkServerStatus();
+            refreshData();
+            setupAutoRefresh();
+        });
+
+        // 设置自动刷新
+        function setupAutoRefresh() {
+            const checkbox = document.getElementById('autoRefresh');
+            
+            function toggleAutoRefresh() {
+                if (checkbox.checked) {
+                    autoRefreshInterval = setInterval(() => {
+                        checkServerStatus();
+                        loadActivities();
+                    }, 5000); // 每5秒刷新一次
+                } else {
+                    if (autoRefreshInterval) {
+                        clearInterval(autoRefreshInterval);
+                    }
+                }
+            }
+
+            checkbox.addEventListener('change', toggleAutoRefresh);
+            toggleAutoRefresh(); // 初始化
+        }
+
+        // 检查服务器状态
+        async function checkServerStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const serverDot = document.getElementById('serverStatus');
+                
+                if (response.ok) {
+                    serverDot.classList.add('active');
+                    await checkMonitorStatus();
+                } else {
+                    serverDot.classList.remove('active');
+                }
+            } catch (error) {
+                document.getElementById('serverStatus').classList.remove('active');
+                document.getElementById('monitorStatus').classList.remove('active');
+            }
+        }
+
+        // 检查监控状态
+        async function checkMonitorStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/monitor/status`);
+                const data = await response.json();
+                const monitorDot = document.getElementById('monitorStatus');
+                
+                if (data.running) {
+                    monitorDot.classList.add('active');
+                } else {
+                    monitorDot.classList.remove('active');
+                }
+            } catch (error) {
+                document.getElementById('monitorStatus').classList.remove('active');
+            }
+        }
+
+        // 启动监控
+        async function startMonitoring() {
+            try {
+                const response = await fetch(`${API_BASE}/monitor/start`, {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    alert('监控已启动！');
+                    checkMonitorStatus();
+                } else {
+                    alert('启动监控失败！');
+                }
+            } catch (error) {
+                alert('网络错误：' + error.message);
+            }
+        }
+
+        // 停止监控
+        async function stopMonitoring() {
+            try {
+                const response = await fetch(`${API_BASE}/monitor/stop`, {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    alert('监控已停止！');
+                    checkMonitorStatus();
+                } else {
+                    alert('停止监控失败！');
+                }
+            } catch (error) {
+                alert('网络错误：' + error.message);
+            }
+        }
+
+        // 生成活动总结
+        async function generateActivitySummary() {
+            const summaryContent = document.getElementById('summaryContent');
+            const summaryLoading = document.getElementById('summaryLoading');
+            const summaryError = document.getElementById('summaryError');
+            
+            summaryLoading.style.display = 'block';
+            summaryContent.style.display = 'none';
+            summaryError.style.display = 'none';
+            
+            try {
+                const response = await fetch(`${API_BASE}/ai/summary/activity?limit=10`, {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    summaryContent.textContent = data.summary;
+                    summaryContent.style.display = 'block';
+                } else {
+                    const errorData = await response.json();
+                    summaryError.textContent = '生成总结失败: ' + (errorData.error || '未知错误');
+                    summaryError.style.display = 'block';
+                }
+            } catch (error) {
+                summaryError.textContent = '网络错误: ' + error.message;
+                summaryError.style.display = 'block';
+            } finally {
+                summaryLoading.style.display = 'none';
+            }
+        }
+
+        // 生成键盘输入总结
+        async function generateKeyboardSummary() {
+            const summaryContent = document.getElementById('summaryContent');
+            const summaryLoading = document.getElementById('summaryLoading');
+            const summaryError = document.getElementById('summaryError');
+            
+            summaryLoading.style.display = 'block';
+            summaryContent.style.display = 'none';
+            summaryError.style.display = 'none';
+            
+            try {
+                const response = await fetch(`${API_BASE}/ai/summary/keyboard?limit=5`, {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    summaryContent.textContent = data.summary;
+                    summaryContent.style.display = 'block';
+                } else {
+                    const errorData = await response.json();
+                    summaryError.textContent = '生成总结失败: ' + (errorData.error || '未知错误');
+                    summaryError.style.display = 'block';
+                }
+            } catch (error) {
+                summaryError.textContent = '网络错误: ' + error.message;
+                summaryError.style.display = 'block';
+            } finally {
+                summaryLoading.style.display = 'none';
+            }
+        }
+
+        // 加载活动记录
+        async function loadActivities() {
+            const activityList = document.getElementById('activityList');
+            const activityError = document.getElementById('activityError');
+            
+            try {
+                const response = await fetch(`${API_BASE}/activities?limit=20`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    displayActivities(data.activities || []);
+                    activityError.style.display = 'none';
+                } else {
+                    activityError.textContent = '加载活动记录失败';
+                    activityError.style.display = 'block';
+                }
+            } catch (error) {
+                activityError.textContent = '网络错误: ' + error.message;
+                activityError.style.display = 'block';
+            }
+        }
+
+        // 显示活动记录
+        function displayActivities(activities) {
+            const activityList = document.getElementById('activityList');
+            
+            if (activities.length === 0) {
+                activityList.innerHTML = '<div class="loading">暂无活动记录</div>';
+                return;
+            }
+            
+            const html = activities.map(activity => {
+                const time = new Date(activity.timestamp).toLocaleTimeString();
+                const iconClass = activity.type === 'keyboard' ? 'keyboard' : 'app';
+                const iconText = activity.type === 'keyboard' ? '⌨️' : '📱';
+                
+                return `
+                    <div class="activity-item">
+                        <div class="activity-icon ${iconClass}">${iconText}</div>
+                        <div class="activity-info">
+                            <div class="title">${activity.content || activity.app_name || '未知活动'}</div>
+                            <div class="details">${activity.app_name || ''} ${activity.duration ? `(${activity.duration}秒)` : ''}</div>
+                        </div>
+                        <div class="activity-time">${time}</div>
+                    </div>
+                `;
+            }).join('');
+            
+            activityList.innerHTML = html;
+        }
+
+        // 刷新所有数据
+        function refreshData() {
+            checkServerStatus();
+            loadActivities();
+        }
+    </script>
+</body>
+</html>

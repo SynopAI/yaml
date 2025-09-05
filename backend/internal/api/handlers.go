@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"yaml-backend/internal/ai"
 	"yaml-backend/internal/monitor"
 	"yaml-backend/internal/storage"
 	"yaml-backend/pkg/models"
@@ -12,14 +13,16 @@ import (
 )
 
 type Handler struct {
-	storage *storage.SQLiteStorage
-	monitor *monitor.Manager
+	storage   *storage.SQLiteStorage
+	monitor   *monitor.Manager
+	aiService *ai.AIService
 }
 
-func NewHandler(storage *storage.SQLiteStorage, monitor *monitor.Manager) *Handler {
+func NewHandler(storage *storage.SQLiteStorage, monitor *monitor.Manager, aiService *ai.AIService) *Handler {
 	return &Handler{
-		storage: storage,
-		monitor: monitor,
+		storage:   storage,
+		monitor:   monitor,
+		aiService: aiService,
 	}
 }
 
@@ -106,5 +109,62 @@ func (h *Handler) GetMonitorStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status": status,
 		"running": h.monitor.IsRunning(),
+	})
+}
+
+// GenerateActivitySummary 生成活动总结
+func (h *Handler) GenerateActivitySummary(c *gin.Context) {
+	limitStr := c.DefaultQuery("limit", "20")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid limit parameter"})
+		return
+	}
+
+	summary, err := h.aiService.GenerateActivitySummary(limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, summary)
+}
+
+// GenerateKeyboardSummary 生成键盘输入总结
+func (h *Handler) GenerateKeyboardSummary(c *gin.Context) {
+	limitStr := c.DefaultQuery("limit", "15")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid limit parameter"})
+		return
+	}
+
+	summary, err := h.aiService.GenerateKeyboardSummary(limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, summary)
+}
+
+// GetAISummaries 获取AI总结历史
+func (h *Handler) GetAISummaries(c *gin.Context) {
+	limitStr := c.DefaultQuery("limit", "10")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid limit parameter"})
+		return
+	}
+
+	summaries, err := h.aiService.GetRecentSummaries(limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"summaries": summaries,
+		"count":     len(summaries),
 	})
 }

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"yaml-backend/internal/ai"
 	"yaml-backend/internal/monitor"
 	"yaml-backend/internal/storage"
 
@@ -8,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRoutes(storage *storage.SQLiteStorage, monitorManager *monitor.Manager) *gin.Engine {
+func SetupRoutes(storage *storage.SQLiteStorage, monitorManager *monitor.Manager, aiService *ai.AIService) *gin.Engine {
 	r := gin.Default()
 
 	// CORS 配置
@@ -19,7 +20,7 @@ func SetupRoutes(storage *storage.SQLiteStorage, monitorManager *monitor.Manager
 	r.Use(cors.New(config))
 
 	// 创建处理器
-	handler := NewHandler(storage, monitorManager)
+	handler := NewHandler(storage, monitorManager, aiService)
 
 	// API 路由组
 	api := r.Group("/api/v1")
@@ -38,6 +39,11 @@ func SetupRoutes(storage *storage.SQLiteStorage, monitorManager *monitor.Manager
 		api.POST("/monitor/start", handler.StartMonitoring)
 		api.POST("/monitor/stop", handler.StopMonitoring)
 		api.GET("/monitor/status", handler.GetMonitorStatus)
+
+		// AI总结相关
+		api.POST("/ai/summary/activity", handler.GenerateActivitySummary)
+		api.POST("/ai/summary/keyboard", handler.GenerateKeyboardSummary)
+		api.GET("/ai/summaries", handler.GetAISummaries)
 	}
 
 	return r

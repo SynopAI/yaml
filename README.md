@@ -33,19 +33,28 @@ YourAiMemoryLog（简称 YAML）是一个全面的用户活动监控和记录系
 - AI 驱动的截图内容分析
 - 智能总结用户活动状态
 
+### 🤖 AI 智能总结
+- 基于 Gemini AI 的数据分析
+- 活动模式智能识别
+- 个性化使用建议
+- 工作效率评估报告
+- 隐私保护的数据处理
+
 ## 技术架构
 
 ### 后端技术栈
 - **语言**: Go
-- **框架**: Gin/Echo (Web API)
-- **数据库**: SQLite/PostgreSQL
-- **AI 集成**: OpenAI API / 本地 LLM
+- **框架**: Gin (Web API)
+- **数据库**: SQLite
+- **AI 集成**: Gemini AI (Google)
+- **API 服务**: AiHubMix 代理服务
 
 ### 前端技术栈
-- **语言**: Swift
-- **框架**: SwiftUI
-- **平台**: macOS (Cocoa)
-- **权限管理**: Accessibility API
+- **原生应用**: Swift + SwiftUI (macOS)
+- **Web界面**: HTML5 + CSS3 + JavaScript
+- **服务器**: Python HTTP Server
+- **UI设计**: 响应式布局 + 现代化界面
+- **权限**: Accessibility API (原生应用)
 
 ## 核心实现方案
 
@@ -100,6 +109,44 @@ AI 图像分析和内容识别
 - 2GB 可用存储空间
 - 网络连接（用于 AI 分析，可选本地模式）
 
+## 快速开始
+
+### 🚀 启动后端服务器
+```bash
+cd backend
+go run cmd/server/main.go
+```
+
+### 🌐 启动Web前端界面
+```bash
+# 启动Web服务器
+python3 frontend/web/server.py
+
+# 在浏览器中访问
+open http://localhost:3000
+```
+
+### 📊 使用Web界面
+1. 打开浏览器访问 http://localhost:3000
+2. 点击 "🚀 启动监控" 开始数据收集
+3. 点击 "📊 生成活动总结" 或 "⌨️ 生成输入总结"
+4. 查看右侧实时活动记录
+
+### 🤖 命令行测试AI功能
+```bash
+# 启动监控
+curl -X POST http://localhost:8080/api/v1/monitor/start
+
+# 生成活动总结
+curl -X POST "http://localhost:8080/api/v1/ai/summary/activity?limit=10"
+
+# 生成键盘输入总结
+curl -X POST "http://localhost:8080/api/v1/ai/summary/keyboard?limit=5"
+
+# 查看总结历史
+curl "http://localhost:8080/api/v1/ai/summaries"
+```
+
 ## 安装和配置
 
 ### 权限设置
@@ -140,6 +187,21 @@ AI 图像分析和内容识别
 - [ ] 鼠标点击事件捕获
 - [ ] 权限管理优化
 
+### ✅ Phase 2.5: AI 智能分析 (已完成)
+- [x] 🤖 Gemini AI 集成
+- [x] 活动数据智能总结
+- [x] 键盘输入模式分析
+- [x] AI 总结历史管理
+- [x] 隐私保护的数据分析
+- [x] AiHubMix API 集成和修复
+
+### ✅ Phase 2.6: Web 前端界面 (已完成)
+- [x] 🌐 响应式 Web 界面
+- [x] 实时数据展示
+- [x] AI 总结功能集成
+- [x] 自动刷新和状态监控
+- [x] 现代化 UI 设计
+
 ### 📋 Phase 3: 智能分析功能
 - [ ] 定时截图功能实现
 - [ ] AI 图像分析集成（OpenAI Vision API）
@@ -166,24 +228,55 @@ AI 图像分析和内容识别
 ### 已实现功能
 - ✅ RESTful API 服务器（Gin框架）
 - ✅ SQLite 数据库集成
-- ✅ SwiftUI 现代化界面
+- ✅ SwiftUI 原生应用界面
+- ✅ 🌐 响应式 Web 前端界面
 - ✅ 跨平台通信架构
 - ✅ 基础权限管理
 - ✅ 模拟数据生成和展示
+- ✅ 🤖 AI 智能总结功能（Gemini集成）
+- ✅ 活动数据智能分析
+- ✅ 键盘输入模式分析
+- ✅ 总结历史记录管理
+- ✅ 实时数据展示和自动刷新
+- ✅ 现代化 UI 设计和交互
 
 ### 核心API端点
+
+#### 基础功能
 - `GET /api/v1/health` - 健康检查
 - `GET /api/v1/activities` - 获取活动记录
+- `POST /api/v1/keyboard` - 键盘输入记录
+
+#### 监控控制
 - `POST /api/v1/monitor/start` - 启动监控
 - `POST /api/v1/monitor/stop` - 停止监控
 - `GET /api/v1/monitor/status` - 监控状态
-- `POST /api/v1/keyboard` - 键盘输入记录
 
-### 下一个版本目标 (v0.2.0)
-- 🎯 实现真实的系统监控功能
+#### 🤖 AI 智能总结
+- `POST /api/v1/ai/summary/activity` - 生成活动总结
+- `POST /api/v1/ai/summary/keyboard` - 生成键盘输入总结
+- `GET /api/v1/ai/summaries` - 获取历史总结
+
+## 🌐 访问地址
+
+### Web 前端界面
+- **地址**: http://localhost:3000
+- **功能**: 实时数据展示、AI总结生成、监控控制
+- **特性**: 响应式设计、自动刷新、现代化UI
+
+### 后端 API 服务
+- **地址**: http://localhost:8080
+- **健康检查**: http://localhost:8080/api/v1/health
+- **API文档**: 详见上方API端点列表
+
+### 下一个版本目标 (v0.3.0)
+- 🎯 实现真实的系统监控功能（替换模拟数据）
 - 🎯 完善权限管理流程
-- 🎯 添加基础的数据可视化
-- 🎯 优化用户体验
+- 🎯 添加数据可视化图表
+- 🎯 优化 AI 总结算法
+- 🎯 增强 Web 界面功能
+- 🎯 添加定时自动总结功能
+- 🎯 支持数据导出和备份
 
 ## 贡献指南
 
