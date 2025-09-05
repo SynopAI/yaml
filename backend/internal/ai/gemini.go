@@ -1,11 +1,13 @@
 package ai
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"yaml-backend/pkg/models"
@@ -48,9 +50,26 @@ type GeminiResponse struct {
 	Candidates []Candidate `json:"candidates"`
 }
 
-// Candidate 候选响应
 type Candidate struct {
-	Content Content `json:"content"`
+	Content      Content `json:"content"`
+	FinishReason string  `json:"finishReason,omitempty"`
+}
+
+// 新增：处理实际API响应的结构
+type GeminiAPIResponse struct {
+	Candidates []struct {
+		Content struct {
+			Role  string `json:"role"`
+			Parts []struct {
+				Text string `json:"text"`
+			} `json:"parts"`
+		} `json:"content"`
+		FinishReason string `json:"finishReason"`
+	} `json:"candidates"`
+	UsageMetadata struct {
+		PromptTokenCount int `json:"promptTokenCount"`
+		TotalTokenCount  int `json:"totalTokenCount"`
+	} `json:"usageMetadata"`
 }
 
 // NewGeminiClient 创建新的Gemini客户端
@@ -59,7 +78,7 @@ func NewGeminiClient(apiKey, baseURL string) *GeminiClient {
 		APIKey:  apiKey,
 		BaseURL: baseURL,
 		client: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: 120 * time.Second, // 增加超时时间到120秒
 		},
 	}
 }
@@ -68,19 +87,18 @@ func NewGeminiClient(apiKey, baseURL string) *GeminiClient {
 func (g *GeminiClient) SummarizeActivities(activities []*models.Activity) (string, error) {
 	// 构建活动数据的文本描述
 	activityText := g.buildActivityText(activities)
-	
-	// 构建提示词
-	prompt := fmt.Sprintf(`请分析以下用户活动数据，并生成一份简洁的总结报告：
+
+	// 构建提示词 - 简化版本
+	prompt := fmt.Sprintf(`分析用户活动数据：
 
 %s
 
-请从以下几个方面进行分析：
-1. 主要使用的应用程序
-2. 活动时间分布
-3. 工作效率评估
-4. 建议和改进点
+请简要总结：
+1. 主要应用
+2. 使用模式
+3. 效率建议
 
-请用中文回复，保持简洁明了。`, activityText)
+用中文回复，保持简洁。`, activityText)
 
 	return g.generateContent(prompt)
 }
@@ -89,7 +107,7 @@ func (g *GeminiClient) SummarizeActivities(activities []*models.Activity) (strin
 func (g *GeminiClient) SummarizeKeyboardInputs(inputs []*models.KeyboardInput) (string, error) {
 	// 构建输入数据的文本描述
 	inputText := g.buildInputText(inputs)
-	
+
 	// 构建提示词
 	prompt := fmt.Sprintf(`请分析以下用户键盘输入数据，并生成一份总结：
 
@@ -120,7 +138,7 @@ func (g *GeminiClient) generateContent(prompt string) (string, error) {
 		},
 		Config: Config{
 			Temperature:     0.7,
-			MaxOutputTokens: 1000,
+			MaxOutputTokens: 6717, // 增加输出token限制
 			TopP:            0.8,
 			TopK:            40,
 		},
@@ -132,8 +150,8 @@ func (g *GeminiClient) generateContent(prompt string) (string, error) {
 		return "", fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	// 构建API URL - AiHubMix需要在路径中包含API key
-	apiURL := fmt.Sprintf("%s/v1beta/models/gemini-2.0-flash-exp:generateContent?key=%s", g.BaseURL, g.APIKey)
+	// 构建API URL - AiHubMix需要在URL中包含key参数
+	apiURL := fmt.Sprintf("%s/v1beta/models/gemini-2.5-flash:generateContent?key=%s", g.BaseURL, g.APIKey)
 
 	// 创建HTTP请求
 	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(jsonData))
@@ -163,31 +181,45 @@ func (g *GeminiClient) generateContent(prompt string) (string, error) {
 	}
 
 	// 解析响应
-	var geminiResp GeminiResponse
+	var geminiResp GeminiAPIResponse
 	if err := json.Unmarshal(body, &geminiResp); err != nil {
 		return "", fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
 	// 提取生成的文本
-	if len(geminiResp.Candidates) == 0 || len(geminiResp.Candidates[0].Content.Parts) == 0 {
-		return "", fmt.Errorf("no content generated")
+	if len(geminiResp.Candidates) == 0 {
+		return "", fmt.Errorf("no candidates in response")
 	}
 
-	return geminiResp.Candidates[0].Content.Parts[0].Text, nil
+	candidate := geminiResp.Candidates[0]
+	if len(candidate.Content.Parts) == 0 {
+		// 如果没有parts，可能是因为达到了最大token限制或其他原因
+		if candidate.FinishReason == "MAX_TOKENS" {
+			return "", fmt.Errorf("response truncated due to max tokens limit")
+		}
+		return "", fmt.Errorf("no parts in candidate content, finish reason: %s", candidate.FinishReason)
+	}
+
+	text := candidate.Content.Parts[0].Text
+	if text == "" {
+		return "", fmt.Errorf("empty text in response")
+	}
+
+	return text, nil
 }
 
 // buildActivityText 构建活动数据的文本描述
 func (g *GeminiClient) buildActivityText(activities []*models.Activity) string {
 	var text string
 	for i, activity := range activities {
-		if i >= 20 { // 限制最多分析20条记录
+		if i >= 10 { // 减少到最多分析10条记录
 			break
 		}
-		text += fmt.Sprintf("时间: %s, 类型: %s, 应用: %s, 内容: %s, 持续时间: %d秒\n",
-			activity.Timestamp.Format("2006-01-02 15:04:05"),
+		// 简化输出格式，减少token使用
+		text += fmt.Sprintf("%s: %s在%s (持续%d秒)\n",
+			activity.Timestamp.Format("15:04"),
 			activity.Type,
 			activity.AppName,
-			activity.Content,
 			activity.Duration)
 	}
 	return text
@@ -207,4 +239,118 @@ func (g *GeminiClient) buildInputText(inputs []*models.KeyboardInput) string {
 			len(input.Text))
 	}
 	return text
+}
+
+// generateContentStream 流式生成内容
+func (g *GeminiClient) generateContentStream(prompt string) (<-chan string, <-chan error) {
+	resultChan := make(chan string, 100)
+	errorChan := make(chan error, 1)
+
+	go func() {
+		defer close(resultChan)
+		defer close(errorChan)
+
+		// 构建请求
+		request := GeminiRequest{
+			Contents: []Content{
+				{
+					Role: "user",
+					Parts: []Part{
+						{Text: prompt},
+					},
+				},
+			},
+			Config: Config{
+				Temperature:     0.7,
+				MaxOutputTokens: 6717,
+				TopP:            0.8,
+				TopK:            40,
+			},
+		}
+
+		// 序列化请求
+		jsonData, err := json.Marshal(request)
+		if err != nil {
+			errorChan <- fmt.Errorf("failed to marshal request: %w", err)
+			return
+		}
+
+		// 构建API URL
+		apiURL := fmt.Sprintf("%s/v1beta/models/gemini-2.5-flash:streamGenerateContent?key=%s", g.BaseURL, g.APIKey)
+
+		// 创建HTTP请求
+		req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(jsonData))
+		if err != nil {
+			errorChan <- fmt.Errorf("failed to create request: %w", err)
+			return
+		}
+
+		// 设置请求头
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Accept", "text/event-stream")
+
+		// 发送请求
+		resp, err := g.client.Do(req)
+		if err != nil {
+			errorChan <- fmt.Errorf("failed to send request: %w", err)
+			return
+		}
+		defer resp.Body.Close()
+
+		// 检查HTTP状态码
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			errorChan <- fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
+			return
+		}
+
+		// 如果不支持流式，回退到普通模式
+		contentType := resp.Header.Get("Content-Type")
+		if !strings.Contains(contentType, "text/event-stream") {
+			// 读取完整响应
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				errorChan <- fmt.Errorf("failed to read response: %w", err)
+				return
+			}
+
+			// 解析响应
+			var geminiResp GeminiResponse
+			if err := json.Unmarshal(body, &geminiResp); err != nil {
+				errorChan <- fmt.Errorf("failed to unmarshal response: %w", err)
+				return
+			}
+
+			// 提取生成的文本
+			if len(geminiResp.Candidates) > 0 && len(geminiResp.Candidates[0].Content.Parts) > 0 {
+				resultChan <- geminiResp.Candidates[0].Content.Parts[0].Text
+			}
+			return
+		}
+
+		// 处理流式响应
+		scanner := bufio.NewScanner(resp.Body)
+		for scanner.Scan() {
+			line := scanner.Text()
+			if strings.HasPrefix(line, "data: ") {
+				data := strings.TrimPrefix(line, "data: ")
+				if data == "[DONE]" {
+					break
+				}
+
+				var chunk GeminiResponse
+				if err := json.Unmarshal([]byte(data), &chunk); err == nil {
+					if len(chunk.Candidates) > 0 && len(chunk.Candidates[0].Content.Parts) > 0 {
+						resultChan <- chunk.Candidates[0].Content.Parts[0].Text
+					}
+				}
+			}
+		}
+
+		if err := scanner.Err(); err != nil {
+			errorChan <- fmt.Errorf("error reading stream: %w", err)
+		}
+	}()
+
+	return resultChan, errorChan
 }

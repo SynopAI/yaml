@@ -44,6 +44,8 @@ func SetupRoutes(storage *storage.SQLiteStorage, monitorManager *monitor.Manager
 		api.POST("/ai/summary/activity", handler.GenerateActivitySummary)
 		api.POST("/ai/summary/keyboard", handler.GenerateKeyboardSummary)
 		api.GET("/ai/summaries", handler.GetAISummaries)
+		// 流式AI总结
+		api.GET("/ai/stream/activity", handler.StreamActivitySummary)
 	}
 
 	return r

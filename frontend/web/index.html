@@ -392,7 +392,7 @@
             }
         }
 
-        // 生成活动总结
+        // 生成活动总结（流式）
         async function generateActivitySummary() {
             const summaryContent = document.getElementById('summaryContent');
             const summaryLoading = document.getElementById('summaryLoading');
@@ -401,25 +401,55 @@
             summaryLoading.style.display = 'block';
             summaryContent.style.display = 'none';
             summaryError.style.display = 'none';
+            summaryContent.textContent = '';
             
             try {
-                const response = await fetch(`${API_BASE}/ai/summary/activity?limit=10`, {
-                    method: 'POST'
-                });
+                // 使用流式API
+                const response = await fetch(`${API_BASE}/ai/stream/activity?limit=10`);
                 
-                if (response.ok) {
-                    const data = await response.json();
-                    summaryContent.textContent = data.summary;
-                    summaryContent.style.display = 'block';
-                } else {
-                    const errorData = await response.json();
-                    summaryError.textContent = '生成总结失败: ' + (errorData.error || '未知错误');
-                    summaryError.style.display = 'block';
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
+                
+                summaryLoading.style.display = 'none';
+                summaryContent.style.display = 'block';
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const eventData = line.substring(6);
+                            if (eventData === '[DONE]') {
+                                return;
+                            }
+                            try {
+                                const data = JSON.parse(eventData);
+                                if (typeof data === 'string') {
+                                    summaryContent.textContent += data;
+                                }
+                            } catch (e) {
+                                // 忽略解析错误，可能是部分数据
+                                summaryContent.textContent += eventData;
+                            }
+                        } else if (line.startsWith('event: error')) {
+                            summaryError.textContent = '生成总结时发生错误';
+                            summaryError.style.display = 'block';
+                            return;
+                        }
+                    }
+                }
+                
             } catch (error) {
                 summaryError.textContent = '网络错误: ' + error.message;
                 summaryError.style.display = 'block';
-            } finally {
                 summaryLoading.style.display = 'none';
             }
         }

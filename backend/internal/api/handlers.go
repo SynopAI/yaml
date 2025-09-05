@@ -168,3 +168,53 @@ func (h *Handler) GetAISummaries(c *gin.Context) {
 		"count":     len(summaries),
 	})
 }
+
+// StreamActivitySummary 流式生成活动总结
+func (h *Handler) StreamActivitySummary(c *gin.Context) {
+	limitStr := c.DefaultQuery("limit", "20")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid limit parameter"})
+		return
+	}
+
+	// 设置SSE响应头
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("Access-Control-Allow-Origin", "*")
+
+	// 获取最近的活动数据
+	activities, err := h.storage.GetRecentActivities(limit)
+	if err != nil {
+		c.SSEvent("error", gin.H{"error": err.Error()})
+		return
+	}
+
+	if len(activities) == 0 {
+		c.SSEvent("data", "暂无活动数据可供分析")
+		c.SSEvent("done", "")
+		return
+	}
+
+	// 调用AI流式生成总结
+	resultChan, errorChan := h.aiService.StreamActivitySummary(activities)
+
+	// 处理流式响应
+	for {
+		select {
+		case chunk, ok := <-resultChan:
+			if !ok {
+				c.SSEvent("done", "")
+				return
+			}
+			c.SSEvent("data", chunk)
+			c.Writer.Flush()
+		case err := <-errorChan:
+			if err != nil {
+				c.SSEvent("error", gin.H{"error": err.Error()})
+				return
+			}
+		}
+	}
+}

@@ -15,7 +15,7 @@ YAML 项目现已集成 Gemini AI 总结功能，可以智能分析用户活动�
 ### API 配置
 - **API Key**: `sk-JIyFjsX1HIuusXty13315a05E29440D88369B8797159E3A4`
 - **Base URL**: `https://aihubmix.com/gemini`
-- **模型**: `gemini-2.0-flash-exp`
+- **模型**: `gemini-2.5-flash`
 
 ## 📡 API 端点
 
@@ -162,7 +162,7 @@ apiURL := fmt.Sprintf("%s/v1beta/models/your-model:generateContent", g.BaseURL)
 ```go
 Config: Config{
     Temperature:     0.7,  // 创造性 (0-1)
-    MaxOutputTokens: 1000, // 最大输出长度
+    MaxOutputTokens: 6717, // 最大输出长度
     TopP:            0.8,  // 核采样
     TopK:            40,   // Top-K 采样
 }

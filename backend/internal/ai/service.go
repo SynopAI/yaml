@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"yaml-backend/internal/storage"
+	"yaml-backend/pkg/models"
 )
 
 // AIService AI服务管理器
@@ -105,4 +106,42 @@ func (s *AIService) GetRecentSummaries(limit int) ([]*storage.SummaryResult, err
 // saveSummary 保存总结到数据库
 func (s *AIService) saveSummary(summary *storage.SummaryResult) error {
 	return s.storage.SaveSummary(summary)
+}
+
+// StreamActivitySummary 流式生成活动总结
+func (s *AIService) StreamActivitySummary(activities []*models.Activity) (<-chan string, <-chan error) {
+	// 构建活动数据的文本描述
+	activityText := s.buildActivityText(activities)
+	
+	// 构建提示词
+	prompt := fmt.Sprintf(`请分析以下用户活动数据，并生成一份简洁的总结报告：
+
+%s
+
+请从以下几个方面进行分析：
+1. 主要使用的应用程序
+2. 活动时间分布
+3. 工作效率评估
+4. 建议和改进点
+
+请用中文回复，保持简洁明了。`, activityText)
+
+	return s.geminiClient.generateContentStream(prompt)
+}
+
+// buildActivityText 构建活动数据的文本描述
+func (s *AIService) buildActivityText(activities []*models.Activity) string {
+	var text string
+	for i, activity := range activities {
+		if i >= 20 { // 限制最多分析20条记录
+			break
+		}
+		text += fmt.Sprintf("时间: %s, 类型: %s, 应用: %s, 内容: %s, 持续时间: %d秒\n",
+			activity.Timestamp.Format("2006-01-02 15:04:05"),
+			activity.Type,
+			activity.AppName,
+			activity.Content,
+			activity.Duration)
+	}
+	return text
 }
