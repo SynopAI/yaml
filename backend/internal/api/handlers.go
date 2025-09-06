@@ -108,6 +108,36 @@ func (h *Handler) GetHealth(c *gin.Context) {
 	})
 }
 
+// GetStats 获取数据统计信息
+func (h *Handler) GetStats(c *gin.Context) {
+	// 获取活动总数
+	activityCount, err := h.storage.GetActivityCount()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 获取键盘输入总数
+	keyboardCount, err := h.storage.GetKeyboardInputCount()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 获取最活跃应用
+	mostActiveApp, err := h.storage.GetMostActiveApp()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"activity_count":   activityCount,
+		"keyboard_count":   keyboardCount,
+		"most_active_app": mostActiveApp,
+	})
+}
+
 // StartMonitoring 启动监控
 func (h *Handler) StartMonitoring(c *gin.Context) {
 	if err := h.monitor.StartAll(); err != nil {

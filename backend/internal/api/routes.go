@@ -28,6 +28,9 @@ func SetupRoutes(storage *storage.SQLiteStorage, monitorManager *monitor.Manager
 	{
 		// 健康检查
 		api.GET("/health", handler.GetHealth)
+		
+		// 统计信息
+		api.GET("/stats", handler.GetStats)
 
 		// 活动记录相关
 		api.GET("/activities", handler.GetActivities)

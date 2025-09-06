@@ -33,7 +33,7 @@ ai:
 # 监控配置
 monitor:
   # 数据采集间隔 (秒)
-  collection_interval: 5
+  collection_interval: 0.01
   # 键盘输入缓冲区大小
   keyboard_buffer_size: 1000
   # 应用切换检测间隔 (毫秒)

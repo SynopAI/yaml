@@ -180,3 +180,35 @@ func (s *SQLiteStorage) GetRecentSummaries(limit int) ([]*SummaryResult, error) 
 func (s *SQLiteStorage) Close() error {
 	return s.db.Close()
 }
+
+// GetActivityCount 获取活动记录总数
+func (s *SQLiteStorage) GetActivityCount() (int, error) {
+	var count int
+	err := s.db.QueryRow("SELECT COUNT(*) FROM activities").Scan(&count)
+	return count, err
+}
+
+// GetKeyboardInputCount 获取键盘输入总数
+func (s *SQLiteStorage) GetKeyboardInputCount() (int, error) {
+	var count int
+	err := s.db.QueryRow("SELECT COUNT(*) FROM keyboard_inputs").Scan(&count)
+	return count, err
+}
+
+// GetMostActiveApp 获取最活跃的应用
+func (s *SQLiteStorage) GetMostActiveApp() (string, error) {
+	var appName string
+	err := s.db.QueryRow(`
+		SELECT app_name 
+		FROM activities 
+		WHERE app_name IS NOT NULL AND app_name != '' 
+		GROUP BY app_name 
+		ORDER BY COUNT(*) DESC 
+		LIMIT 1
+	`).Scan(&appName)
+	
+	if err == sql.ErrNoRows {
+		return "-", nil
+	}
+	return appName, err
+}

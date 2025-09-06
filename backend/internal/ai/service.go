@@ -112,7 +112,7 @@ func (s *AIService) saveSummary(summary *storage.SummaryResult) error {
 func (s *AIService) StreamActivitySummary(activities []*models.Activity) (<-chan string, <-chan error) {
 	// 构建活动数据的文本描述
 	activityText := s.buildActivityText(activities)
-	
+
 	// 构建提示词
 	prompt := fmt.Sprintf(`请分析以下用户活动数据，并生成一份简洁的总结报告：
 

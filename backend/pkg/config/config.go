@@ -57,9 +57,9 @@ type GenerationConfig struct {
 
 // MonitorConfig 监控配置
 type MonitorConfig struct {
-	CollectionInterval  int `yaml:"collection_interval"`
-	KeyboardBufferSize  int `yaml:"keyboard_buffer_size"`
-	AppSwitchInterval   int `yaml:"app_switch_interval"`
+	CollectionInterval int `yaml:"collection_interval"`
+	KeyboardBufferSize int `yaml:"keyboard_buffer_size"`
+	AppSwitchInterval  int `yaml:"app_switch_interval"`
 }
 
 // APIConfig API配置

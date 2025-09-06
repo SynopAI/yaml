@@ -322,7 +322,7 @@
             </div>
             
             <div class="card">
-                <h3>📊 数据统计</h3>
+                <h3>📊 数据统计 <small id="lastUpdate" style="font-size: 12px; color: #666;"></small></h3>
                 <div id="statsContent" class="summary-content">
                     <div class="stats-item">
                         <span class="stats-label">应用切换次数:</span>
@@ -347,6 +347,9 @@
 
         // 页面加载时初始化
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('页面加载完成，开始初始化...', new Date().toLocaleTimeString());
+            // 更新页面标题以显示加载时间
+            document.title = 'YAML - 操作记录总结 (' + new Date().toLocaleTimeString() + ')';
             checkServerStatus();
             refreshData();
             setupAutoRefresh();
@@ -363,8 +366,8 @@
                  if (response.ok) {
                      const data = await response.json();
                      currentKeyboardInputs = data.keyboard_inputs || [];
+                     console.log('加载键盘数据:', currentKeyboardInputs.length, '条记录');
                      displayKeyboardData(currentKeyboardInputs);
-                     updateStats(currentActivities, currentKeyboardInputs);
                      keyboardError.style.display = 'none';
                  } else {
                      keyboardError.textContent = '加载键盘记录失败';
@@ -403,30 +406,29 @@
             keyboardList.innerHTML = html;
         }
 
-        // 更新统计数据
-        function updateStats(activities, keyboardInputs) {
-            // 更新计数
-            document.getElementById('activityCount').textContent = activities.length;
-            document.getElementById('keyboardCount').textContent = keyboardInputs.length;
-            
-            // 计算最活跃应用
-            const appCounts = {};
-            activities.forEach(activity => {
-                if (activity.app_name) {
-                    appCounts[activity.app_name] = (appCounts[activity.app_name] || 0) + 1;
+        // 更新统计数据 - 从API获取真实统计
+        async function updateStats() {
+            try {
+                console.log('获取统计数据...', new Date().toLocaleTimeString());
+                
+                const response = await fetch(`${API_BASE}/stats`);
+                if (response.ok) {
+                    const stats = await response.json();
+                    console.log('统计数据:', stats);
+                    
+                    // 更新计数
+                    document.getElementById('activityCount').textContent = stats.activity_count;
+                    document.getElementById('keyboardCount').textContent = stats.keyboard_count;
+                    document.getElementById('mostActiveApp').textContent = stats.most_active_app;
+                    
+                    // 更新最后更新时间
+                    document.getElementById('lastUpdate').textContent = '(更新时间: ' + new Date().toLocaleTimeString() + ')';
+                } else {
+                    console.error('获取统计数据失败:', response.status);
                 }
-            });
-            
-            let mostActiveApp = '-';
-            let maxCount = 0;
-            for (const [app, count] of Object.entries(appCounts)) {
-                if (count > maxCount) {
-                    maxCount = count;
-                    mostActiveApp = app;
-                }
+            } catch (error) {
+                console.error('统计数据请求错误:', error);
             }
-            
-            document.getElementById('mostActiveApp').textContent = mostActiveApp;
         }
 
         // 设置自动刷新
@@ -436,9 +438,7 @@
             function toggleAutoRefresh() {
                 if (checkbox.checked) {
                     autoRefreshInterval = setInterval(() => {
-                        checkServerStatus();
-                        loadActivities();
-                        loadKeyboardData();
+                        refreshData();
                     }, CONFIG.AUTO_REFRESH.INTERVAL);
                 } else {
                     if (autoRefreshInterval) {
@@ -629,11 +629,11 @@
                 const response = await fetch(`${API_BASE}/activities?limit=${CONFIG.DISPLAY.ACTIVITY_LIMIT}`);
                 
                 if (response.ok) {
-                    const data = await response.json();
-                    currentActivities = data.activities || [];
-                    displayActivities(currentActivities);
-                    updateStats(currentActivities, currentKeyboardInputs);
-                    activityError.style.display = 'none';
+                     const data = await response.json();
+                     currentActivities = data.activities || [];
+                     console.log('加载活动数据:', currentActivities.length, '条记录');
+                     displayActivities(currentActivities);
+                     activityError.style.display = 'none';
                 } else {
                     activityError.textContent = '加载活动记录失败';
                     activityError.style.display = 'block';
@@ -674,10 +674,16 @@
         }
 
         // 刷新所有数据
-        function refreshData() {
+        async function refreshData() {
+            console.log('开始刷新数据...', new Date().toLocaleTimeString());
             checkServerStatus();
-            loadActivities();
-            loadKeyboardData();
+            // 等待所有数据加载完成
+            await Promise.all([
+                loadActivities(),
+                loadKeyboardData(),
+                updateStats()
+            ]);
+            console.log('数据刷新完成');
         }
     </script>
 </body>
