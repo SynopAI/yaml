@@ -63,6 +63,27 @@ func (h *Handler) PostActivity(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"message": "Activity saved successfully"})
 }
 
+// GetKeyboardInputs 获取键盘输入记录
+func (h *Handler) GetKeyboardInputs(c *gin.Context) {
+	limitStr := c.DefaultQuery("limit", "20")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid limit parameter"})
+		return
+	}
+
+	inputs, err := h.storage.GetRecentKeyboardInputs(limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"keyboard_inputs": inputs,
+		"count":          len(inputs),
+	})
+}
+
 // PostKeyboardInput 添加键盘输入记录
 func (h *Handler) PostKeyboardInput(c *gin.Context) {
 	var input models.KeyboardInput
@@ -111,6 +132,8 @@ func (h *Handler) GetMonitorStatus(c *gin.Context) {
 		"running": h.monitor.IsRunning(),
 	})
 }
+
+
 
 // GenerateActivitySummary 生成活动总结
 func (h *Handler) GenerateActivitySummary(c *gin.Context) {

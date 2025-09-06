@@ -239,6 +239,28 @@
         .auto-refresh input[type="checkbox"] {
             transform: scale(1.2);
         }
+
+        .stats-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .stats-item:last-child {
+            border-bottom: none;
+        }
+
+        .stats-label {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .stats-value {
+            font-weight: bold;
+            color: #007bff;
+        }
     </style>
 </head>
 <body>
@@ -280,10 +302,38 @@
             </div>
 
             <div class="card">
-                <h3>📋 最近活动记录</h3>
+                <h3>📋 应用切换记录</h3>
                 <div id="activityError" class="error" style="display: none;"></div>
                 <div id="activityList" class="activity-list">
                     <div class="loading">加载中...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="content-grid" style="margin-top: 30px;">
+            <div class="card">
+                <h3>⌨️ 键盘输入记录</h3>
+                <div id="keyboardError" class="error" style="display: none;"></div>
+                <div id="keyboardList" class="activity-list">
+                    <div class="loading">加载中...</div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>📊 数据统计</h3>
+                <div id="statsContent" class="summary-content">
+                    <div class="stats-item">
+                        <span class="stats-label">应用切换次数:</span>
+                        <span id="activityCount" class="stats-value">0</span>
+                    </div>
+                    <div class="stats-item">
+                        <span class="stats-label">键盘输入次数:</span>
+                        <span id="keyboardCount" class="stats-value">0</span>
+                    </div>
+                    <div class="stats-item">
+                        <span class="stats-label">最活跃应用:</span>
+                        <span id="mostActiveApp" class="stats-value">-</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -300,6 +350,83 @@
             setupAutoRefresh();
         });
 
+        // 加载键盘输入记录
+         async function loadKeyboardData() {
+             const keyboardList = document.getElementById('keyboardList');
+             const keyboardError = document.getElementById('keyboardError');
+             
+             try {
+                 const response = await fetch(`${API_BASE}/keyboard?limit=20`);
+                 
+                 if (response.ok) {
+                     const data = await response.json();
+                     currentKeyboardInputs = data.keyboard_inputs || [];
+                     displayKeyboardData(currentKeyboardInputs);
+                     updateStats(currentActivities, currentKeyboardInputs);
+                     keyboardError.style.display = 'none';
+                 } else {
+                     keyboardError.textContent = '加载键盘记录失败';
+                     keyboardError.style.display = 'block';
+                 }
+             } catch (error) {
+                 keyboardError.textContent = '网络错误: ' + error.message;
+                 keyboardError.style.display = 'block';
+             }
+         }
+
+        // 显示键盘输入记录
+        function displayKeyboardData(keyboardInputs) {
+            const keyboardList = document.getElementById('keyboardList');
+            
+            if (keyboardInputs.length === 0) {
+                keyboardList.innerHTML = '<div class="loading">暂无键盘输入记录</div>';
+                return;
+            }
+            
+            const html = keyboardInputs.map(input => {
+                const time = new Date(input.timestamp).toLocaleTimeString();
+                
+                return `
+                     <div class="activity-item">
+                         <div class="activity-icon keyboard">⌨️</div>
+                         <div class="activity-info">
+                             <div class="title">${input.text || '键盘输入'}</div>
+                             <div class="details">${input.app_name || ''}</div>
+                         </div>
+                         <div class="activity-time">${time}</div>
+                     </div>
+                 `;
+            }).join('');
+            
+            keyboardList.innerHTML = html;
+        }
+
+        // 更新统计数据
+        function updateStats(activities, keyboardInputs) {
+            // 更新计数
+            document.getElementById('activityCount').textContent = activities.length;
+            document.getElementById('keyboardCount').textContent = keyboardInputs.length;
+            
+            // 计算最活跃应用
+            const appCounts = {};
+            activities.forEach(activity => {
+                if (activity.app_name) {
+                    appCounts[activity.app_name] = (appCounts[activity.app_name] || 0) + 1;
+                }
+            });
+            
+            let mostActiveApp = '-';
+            let maxCount = 0;
+            for (const [app, count] of Object.entries(appCounts)) {
+                if (count > maxCount) {
+                    maxCount = count;
+                    mostActiveApp = app;
+                }
+            }
+            
+            document.getElementById('mostActiveApp').textContent = mostActiveApp;
+        }
+
         // 设置自动刷新
         function setupAutoRefresh() {
             const checkbox = document.getElementById('autoRefresh');
@@ -309,6 +436,7 @@
                     autoRefreshInterval = setInterval(() => {
                         checkServerStatus();
                         loadActivities();
+                        loadKeyboardData();
                     }, 5000); // 每5秒刷新一次
                 } else {
                     if (autoRefreshInterval) {
@@ -486,6 +614,10 @@
             }
         }
 
+        // 存储当前数据用于统计
+        let currentActivities = [];
+        let currentKeyboardInputs = [];
+
         // 加载活动记录
         async function loadActivities() {
             const activityList = document.getElementById('activityList');
@@ -496,7 +628,9 @@
                 
                 if (response.ok) {
                     const data = await response.json();
-                    displayActivities(data.activities || []);
+                    currentActivities = data.activities || [];
+                    displayActivities(currentActivities);
+                    updateStats(currentActivities, currentKeyboardInputs);
                     activityError.style.display = 'none';
                 } else {
                     activityError.textContent = '加载活动记录失败';
@@ -541,6 +675,7 @@
         function refreshData() {
             checkServerStatus();
             loadActivities();
+            loadKeyboardData();
         }
     </script>
 </body>

@@ -33,9 +33,10 @@ func SetupRoutes(storage *storage.SQLiteStorage, monitorManager *monitor.Manager
 		api.POST("/activities", handler.PostActivity)
 
 		// 键盘输入相关
+		api.GET("/keyboard", handler.GetKeyboardInputs)
 		api.POST("/keyboard", handler.PostKeyboardInput)
 
-		// 监控控制相关
+		// 监控相关
 		api.POST("/monitor/start", handler.StartMonitoring)
 		api.POST("/monitor/stop", handler.StopMonitoring)
 		api.GET("/monitor/status", handler.GetMonitorStatus)
