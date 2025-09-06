@@ -5,30 +5,33 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 
 	"yaml-backend/internal/ai"
 	"yaml-backend/internal/api"
 	"yaml-backend/internal/monitor"
 	"yaml-backend/internal/storage"
+	"yaml-backend/pkg/config"
 )
 
 func main() {
-	// 获取用户主目录
-	homeDir, err := os.UserHomeDir()
+	// 加载配置文件
+	configPath := os.Getenv("CONFIG_PATH")
+	if configPath == "" {
+		// 默认配置文件路径
+		configPath = "config/config.yaml"
+	}
+
+	cfg, err := config.LoadConfig(configPath)
 	if err != nil {
-		log.Fatal("Failed to get user home directory:", err)
+		log.Fatal("Failed to load configuration:", err)
 	}
 
-	// 创建应用数据目录
-	dataDir := filepath.Join(homeDir, ".yaml")
-	if err := os.MkdirAll(dataDir, 0755); err != nil {
-		log.Fatal("Failed to create data directory:", err)
+	// 获取数据库路径
+	dbPath, err := cfg.GetDatabasePath()
+	if err != nil {
+		log.Fatal("Failed to get database path:", err)
 	}
-
-	// 数据库文件路径
-	dbPath := filepath.Join(dataDir, "yaml.db")
 	fmt.Printf("Database path: %s\n", dbPath)
 
 	// 初始化数据库
@@ -42,17 +45,15 @@ func main() {
 	monitorManager := monitor.NewManager(storage)
 
 	// 创建AI服务
-	apiKey := "sk-JIyFjsX1HIuusXty13315a05E29440D88369B8797159E3A4"
-	baseURL := "https://aihubmix.com/gemini"
-	aiService := ai.NewAIService(storage, apiKey, baseURL)
+	aiService := ai.NewAIService(storage, cfg.AI.Gemini.APIKey, cfg.AI.Gemini.BaseURL, cfg.GetAITimeout())
 
 	// 设置路由
-	router := api.SetupRoutes(storage, monitorManager, aiService)
+	router := api.SetupRoutes(storage, monitorManager, aiService, cfg)
 
 	// 启动服务器
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080"
+		port = cfg.Server.Port
 	}
 
 	// 设置优雅关闭

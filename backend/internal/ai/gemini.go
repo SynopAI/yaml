@@ -73,12 +73,12 @@ type GeminiAPIResponse struct {
 }
 
 // NewGeminiClient 创建新的Gemini客户端
-func NewGeminiClient(apiKey, baseURL string) *GeminiClient {
+func NewGeminiClient(apiKey, baseURL string, timeout time.Duration) *GeminiClient {
 	return &GeminiClient{
 		APIKey:  apiKey,
 		BaseURL: baseURL,
 		client: &http.Client{
-			Timeout: 120 * time.Second, // 增加超时时间到120秒
+			Timeout: timeout,
 		},
 	}
 }

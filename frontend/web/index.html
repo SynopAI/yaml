@@ -264,6 +264,8 @@
     </style>
 </head>
 <body>
+    <!-- 加载配置文件 -->
+    <script src="config.js"></script>
     <div class="container">
         <div class="header">
             <h1>🤖 YAML 操作记录总结</h1>
@@ -340,7 +342,7 @@
     </div>
 
     <script>
-        const API_BASE = 'http://localhost:8080/api/v1';
+        const API_BASE = CONFIG.API.BASE_URL;
         let autoRefreshInterval;
 
         // 页面加载时初始化
@@ -356,7 +358,7 @@
              const keyboardError = document.getElementById('keyboardError');
              
              try {
-                 const response = await fetch(`${API_BASE}/keyboard?limit=20`);
+                 const response = await fetch(`${API_BASE}/keyboard?limit=${CONFIG.DISPLAY.KEYBOARD_LIMIT}`);
                  
                  if (response.ok) {
                      const data = await response.json();
@@ -437,7 +439,7 @@
                         checkServerStatus();
                         loadActivities();
                         loadKeyboardData();
-                    }, 5000); // 每5秒刷新一次
+                    }, CONFIG.AUTO_REFRESH.INTERVAL);
                 } else {
                     if (autoRefreshInterval) {
                         clearInterval(autoRefreshInterval);
@@ -533,7 +535,7 @@
             
             try {
                 // 使用流式API
-                const response = await fetch(`${API_BASE}/ai/stream/activity?limit=10`);
+                const response = await fetch(`${API_BASE}/ai/stream/activity?limit=${CONFIG.DISPLAY.SUMMARY_LIMIT}`);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -593,7 +595,7 @@
             summaryError.style.display = 'none';
             
             try {
-                const response = await fetch(`${API_BASE}/ai/summary/keyboard?limit=5`, {
+                const response = await fetch(`${API_BASE}/ai/summary/keyboard?limit=${CONFIG.DISPLAY.SUMMARY_LIMIT}`, {
                     method: 'POST'
                 });
                 
@@ -624,7 +626,7 @@
             const activityError = document.getElementById('activityError');
             
             try {
-                const response = await fetch(`${API_BASE}/activities?limit=20`);
+                const response = await fetch(`${API_BASE}/activities?limit=${CONFIG.DISPLAY.ACTIVITY_LIMIT}`);
                 
                 if (response.ok) {
                     const data = await response.json();

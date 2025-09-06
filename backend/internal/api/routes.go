@@ -4,20 +4,21 @@ import (
 	"yaml-backend/internal/ai"
 	"yaml-backend/internal/monitor"
 	"yaml-backend/internal/storage"
+	"yaml-backend/pkg/config"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRoutes(storage *storage.SQLiteStorage, monitorManager *monitor.Manager, aiService *ai.AIService) *gin.Engine {
+func SetupRoutes(storage *storage.SQLiteStorage, monitorManager *monitor.Manager, aiService *ai.AIService, cfg *config.Config) *gin.Engine {
 	r := gin.Default()
 
 	// CORS 配置
-	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:3000", "http://127.0.0.1:3000"}
-	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
-	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
-	r.Use(cors.New(config))
+	corsConfig := cors.DefaultConfig()
+	corsConfig.AllowOrigins = cfg.API.CORSOrigins
+	corsConfig.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
+	corsConfig.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
+	r.Use(cors.New(corsConfig))
 
 	// 创建处理器
 	handler := NewHandler(storage, monitorManager, aiService)

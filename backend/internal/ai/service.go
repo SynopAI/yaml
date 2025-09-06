@@ -15,10 +15,10 @@ type AIService struct {
 }
 
 // NewAIService 创建新的AI服务
-func NewAIService(storage *storage.SQLiteStorage, apiKey, baseURL string) *AIService {
+func NewAIService(storage *storage.SQLiteStorage, apiKey, baseURL string, timeout time.Duration) *AIService {
 	return &AIService{
 		storage:      storage,
-		geminiClient: NewGeminiClient(apiKey, baseURL),
+		geminiClient: NewGeminiClient(apiKey, baseURL, timeout),
 	}
 }
 

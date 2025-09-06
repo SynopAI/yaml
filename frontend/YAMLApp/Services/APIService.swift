@@ -1,8 +1,17 @@
 import Foundation
 
 class APIService {
-    private let baseURL = "http://localhost:8080/api/v1"
+    private let baseURL: String
     private let session = URLSession.shared
+    
+    init() {
+        // 从配置文件或环境变量读取API地址
+        if let configURL = Bundle.main.object(forInfoDictionaryKey: "APIBaseURL") as? String {
+            self.baseURL = configURL
+        } else {
+            self.baseURL = "http://localhost:8080/api/v1" // 默认值
+        }
+    }
     
     func startMonitoring(completion: @escaping (Result<Void, Error>) -> Void) {
         guard let url = URL(string: "\(baseURL)/monitor/start") else {
